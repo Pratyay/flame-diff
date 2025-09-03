@@ -1,0 +1,574 @@
+<!--- index.html --->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flame Graph Diff Tool</title>
+    <style>
+        * { box-sizing: border-box; }
+        .expand-indicator-category { 
+            cursor: pointer; 
+            color: #0056b3; 
+            text-decoration: underline; 
+            font-size: 14px;
+            font-weight: 500;
+        }
+        .expand-indicator-category:hover { color: #007bff; }
+        .stack-trace {
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            max-width: 400px;
+            word-break: break-all;
+            position: relative;
+        }
+        .short-trace { 
+            cursor: pointer; 
+            color: #007bff;
+            text-decoration: underline; 
+            display: block;
+        }
+        .short-trace:hover {
+            color: #0056b3;
+        }
+        .expand-indicator {
+            font-size: 10px;
+            color: #6c757d;
+            margin-left: 4px;
+        }
+        .full-trace { 
+            display: none;
+            position: fixed;
+            background: #1a202c;
+            border: 2px solid #4a5568;
+            border-radius: 8px;
+            padding: 0;
+            z-index: 1000;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+            min-width: 700px;
+            max-width: 80vw;
+            max-height: 70vh;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-break: break-word;
+            font-size: 13px;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #e2e8f0;
+            line-height: 1.6;
+        }
+        .full-trace .stack-line {
+            padding: 4px 16px;
+            display: block;
+            transition: background-color 0.2s ease;
+            background-color: #2d3748;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            color: #f8f8f2;
+            line-height: 1.2;
+        }
+        .full-trace .keyword {
+            color: #66d9ef;
+        }
+        .full-trace .type {
+            color: #a6e22e;
+        }
+        .full-trace .method {
+            color: #66d9ef;
+        }
+        .full-trace .package {
+            color: #fd971f;
+        }
+        .full-trace .stack-line:hover {
+            background-color: #4a5568 !important;
+        }
+        .full-trace .stack-line:first-child {
+            border-radius: 6px 6px 0 0;
+        }
+        .full-trace .stack-line:last-child {
+            border-radius: 0 0 6px 6px;
+        }
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 999;
+        }
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            margin: 0; 
+            padding: 20px; 
+            background-color: #f5f5f5; 
+        }
+        .container { 
+            max-width: 1200px; 
+            margin: 0 auto; 
+            background: white; 
+            border-radius: 8px; 
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1); 
+            padding: 30px; 
+        }
+        .header { 
+            text-align: center; 
+            margin-bottom: 30px; 
+            border-bottom: 2px solid #e0e0e0; 
+            padding-bottom: 20px; 
+        }
+        .header h1 { color: #333; margin: 0; }
+        .header p { color: #666; margin: 10px 0 0 0; }
+        
+        .upload-section {
+            background: #f9f9f9;
+            padding: 20px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            transition: all 0.3s ease;
+        }
+        
+        .upload-section.collapsed {
+            padding: 10px 20px;
+        }
+        
+        .upload-section.collapsed .upload-form-content {
+            display: none;
+        }
+        
+        .upload-toggle {
+            cursor: pointer;
+            color: #007bff;
+            text-decoration: underline;
+            font-weight: 600;
+            margin-bottom: 10px;
+            display: none;
+        }
+        
+        .upload-toggle:hover {
+            color: #0056b3;
+        }
+        
+        .upload-section.collapsed .upload-toggle {
+            display: block;
+        }
+        
+        .file-input-group {
+            margin-bottom: 15px;
+        }
+        
+        .file-input-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #444;
+        }
+        
+        .file-input-group input[type="file"] {
+            width: 100%;
+            padding: 8px;
+            border: 2px dashed #ccc;
+            border-radius: 4px;
+            background: white;
+        }
+        
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: background 0.3s;
+        }
+        
+        button:hover {
+            background: #0056b3;
+        }
+        
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        
+        .results { margin-top: 30px; }
+        
+        .summary {
+            background: #e7f3ff;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            border-left: 4px solid #007bff;
+        }
+        
+        .category {
+            margin-bottom: 25px;
+        }
+        
+        .categories-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .category-container {
+            flex: 1;
+            min-width: 45%;
+            box-sizing: border-box;
+        }
+        
+        .category h3 {
+            margin: 0 0 10px 0;
+            padding: 10px;
+            border-radius: 4px;
+            color: white;
+        }
+        
+        .category.added h3 { background: #28a745; }
+        .category.removed h3 { background: #dc3545; }
+        .category.increased h3 { background: #fd7e14; }
+        .category.decreased h3 { background: #17a2b8; }
+        
+        table { 
+            width: 100%; 
+            border-collapse: collapse; 
+            margin-top: 10px;
+            background: white;
+        }
+        
+        th, td { 
+            border: 1px solid #ddd; 
+            padding: 12px 8px; 
+            text-align: left; 
+        }
+        
+        th { 
+            background-color: #f8f9fa; 
+            font-weight: 600;
+            color: #495057;
+        }
+        
+        tr:nth-child(even) { background-color: #f8f9fa; }
+        tr:hover { background-color: #e9ecef; }
+        
+        
+        .positive { color: #28a745; font-weight: 600; }
+        .negative { color: #dc3545; font-weight: 600; }
+        .neutral { color: #6c757d; }
+        
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+        
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 4px;
+            border: 1px solid #f5c6cb;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>Flame Graph Diff Tool</h1>
+            <p>Upload two flame graph files to see the differences.</p>
+        </header>
+
+        <div class="upload-section" id="upload-section">
+            <div class="upload-toggle" id="upload-toggle" onclick="toggleUploadSection()">▼ Show Upload Panel</div>
+            <div class="upload-form-content" id="upload-form-content">
+                <form id="upload-form">
+                    <div class="file-input-group">
+                        <label for="oldFile">Old Flame Graph File:</label>
+                        <input type="file" id="oldFile" name="old_file" accept=".collapsed" required>
+                    </div>
+                    <div class="file-input-group">
+                        <label for="newFile">New Flame Graph File:</label>
+                        <input type="file" id="newFile" name="new_file" accept=".collapsed" required>
+                    </div>
+                    <button type="submit" id="compare-btn">Compare Flame Graphs</button>
+                </form>
+            </div>
+        </div>
+
+        <div class="results" id="results">
+            <!-- Comparison results will appear here -->
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('upload-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const compareBtn = document.getElementById('compare-btn');
+            const resultsDiv = document.getElementById('results');
+            
+            // Show loading state
+            compareBtn.disabled = true;
+            compareBtn.textContent = 'Processing...';
+            resultsDiv.innerHTML = '<div class="loading">Analyzing flame graphs...</div>';
+            
+            const formData = new FormData();
+            formData.append('old_file', document.getElementById('oldFile').files[0]);
+            formData.append('new_file', document.getElementById('newFile').files[0]);
+
+            try {
+                const response = await fetch('/api/diff', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await response.json();
+
+                if (!data.success) {
+                    throw new Error(data.error);
+                }
+
+                displayResults(data.data);
+                // Collapse upload section after successful comparison
+                collapseUploadSection();
+            } catch (error) {
+                resultsDiv.innerHTML = `<div class="error">Error: ${error.message}</div>`;
+            } finally {
+                compareBtn.disabled = false;
+                compareBtn.textContent = 'Compare Flame Graphs';
+            }
+        });
+
+        function displayResults(data) {
+            const resultsDiv = document.getElementById('results');
+            
+            const summary = data.summary;
+            let summaryHtml = `
+                <div class="summary">
+                    <h3>Summary</h3>
+                    <p><strong>Old Total Samples:</strong> ${summary.old_total.toLocaleString()}</p>
+                    <p><strong>New Total Samples:</strong> ${summary.new_total.toLocaleString()}</p>
+                    <p><strong>Total Change:</strong> <span class="${summary.total_change >= 0 ? 'positive' : 'negative'}">
+                        ${summary.total_change >= 0 ? '+' : ''}${summary.total_change.toLocaleString()} 
+                        (${summary.total_change_percent.toFixed(2)}%)
+                    </span></p>
+                </div>
+            `;
+            
+            let categoriesHtml = '';
+            
+            // Create side-by-side layout
+            let row1Html = '<div class="categories-row">';
+            let row2Html = '<div class="categories-row">';
+            
+            // Added and Removed stacks (first row)
+            if (data.added.length > 0) {
+                row1Html += '<div class="category-container">' + createCategorySection('Added Stack Traces', 'added', data.added, 5) + '</div>';
+            }
+            if (data.removed.length > 0) {
+                row1Html += '<div class="category-container">' + createCategorySection('Removed Stack Traces', 'removed', data.removed, 5) + '</div>';
+            }
+            row1Html += '</div>';
+            
+            // Increased and Decreased stacks (second row)
+            if (data.increased.length > 0) {
+                row2Html += '<div class="category-container">' + createCategorySection('Increased Stack Traces', 'increased', data.increased, 5) + '</div>';
+            }
+            if (data.decreased.length > 0) {
+                row2Html += '<div class="category-container">' + createCategorySection('Decreased Stack Traces', 'decreased', data.decreased, 5) + '</div>';
+            }
+            row2Html += '</div>';
+            
+            categoriesHtml = row1Html + row2Html;
+            
+            resultsDiv.innerHTML = `
+                <h2>Flame Graph Comparison Results</h2>
+                ${summaryHtml}
+                ${categoriesHtml}
+            `;
+        }
+        
+function createCategorySection(title, category, items, limit = null) {
+            if (items.length === 0) return '';
+            
+            const tableId = `${category}_table`;
+            const showAllId = `${category}_show_all`;
+            const limitedItems = limit ? items.slice(0, limit) : items;
+            const remainingItems = limit && items.length > limit ? items.slice(limit) : [];
+            
+            return `
+                <div class="category ${category}">
+                    <h3>${title} 
+                        ${limit && items.length > limit ? `(${limit} of ${items.length} shown)` : `(${items.length} total)`}
+                        ${limit && items.length > limit ? ` <span class="expand-indicator-category" id="${showAllId}" onclick="toggleCategory('${category}')">Show all</span>` : ''}
+                    </h3>
+                    <table id="${tableId}">
+                        <thead>
+                            <tr>
+                                <th>Stack Trace</th>
+                                <th>Old Count</th>
+                                <th>New Count</th>
+                                <th>Old %</th>
+                                <th>New %</th>
+                                <th>Diff Count</th>
+                                <th>Diff %</th>
+                            </tr>
+                        </thead>
+                        <tbody id="${category}_tbody">
+                            ${limitedItems.map(stackInfo => createStackRow(stackInfo)).join('')}
+                        </tbody>
+                        ${remainingItems.length > 0 ? `
+                        <tbody id="${category}_extra" style="display: none;">
+                            ${remainingItems.map(stackInfo => createStackRow(stackInfo)).join('')}
+                        </tbody>
+                        ` : ''}
+                    </table>
+                </div>
+            `;
+        }
+        
+        function createStackRow(stackInfo) {
+            const shortStack = stackInfo.stack.split(';').pop();
+            const diffClass = stackInfo.diff_count > 0 ? 'positive' : 
+                            stackInfo.diff_count < 0 ? 'negative' : 'neutral';
+            const traceId = `trace_${Math.random().toString(36).substr(2, 9)}`;
+            return `
+                <tr>
+                    <td class="stack-trace">
+                        <span class="short-trace" onclick="toggleFullTrace('${traceId}')">
+                            ${escapeHtml(shortStack)}
+                            <span class="expand-indicator">▼</span>
+                        </span>
+                        <div class="modal-overlay" id="overlay_${traceId}" onclick="closeFullTrace('${traceId}')"></div>
+                        <div class="full-trace" id="${traceId}">${formatStackTrace(stackInfo.stack)}</div>
+                    </td>
+                    <td>${stackInfo.old_count.toLocaleString()}</td>
+                    <td>${stackInfo.new_count.toLocaleString()}</td>
+                    <td>${stackInfo.old_percent}%</td>
+                    <td>${stackInfo.new_percent}%</td>
+                    <td class="${diffClass}">
+                        ${stackInfo.diff_count >= 0 ? '+' : ''}${stackInfo.diff_count.toLocaleString()}
+                    </td>
+                    <td class="${diffClass}">
+                        ${stackInfo.diff_percent >= 0 ? '+' : ''}${stackInfo.diff_percent}%
+                    </td>
+                </tr>
+            `;
+        }
+        
+function toggleCategory(category) {
+            const extraRows = document.getElementById(`${category}_extra`);
+            const showAllBtn = document.getElementById(`${category}_show_all`);
+            
+            if (extraRows && showAllBtn) {
+                if (extraRows.style.display === 'none' || extraRows.style.display === '') {
+                    extraRows.style.display = 'table-row-group';
+                    showAllBtn.textContent = 'Show less';
+                } else {
+                    extraRows.style.display = 'none';
+                    showAllBtn.textContent = 'Show all';
+                }
+            }
+        }
+
+        function formatStackTrace(stack) {
+            const lines = stack.split(';');
+            return lines.map(line => {
+                const formattedLine = formatJavaStackLine(line.trim());
+                return `<span class="stack-line">${formattedLine}</span>`;
+            }).join('');
+        }
+
+        function formatJavaStackLine(line) {
+            // Remove flame graph suffixes like [j], [i], etc. and trailing underscores
+            let cleanLine = line.replace(/\s*\[[a-zA-Z]\]\s*$/, '').replace(/_+\s*$/, '').trim();
+            
+            if (!cleanLine) return '';
+            
+            // Simple rule: anything after last / and before . is green (class)
+            // anything after . is blue (method)
+            let result = cleanLine;
+            
+            // Find pattern: [anything]/[ClassName].[methodName]
+            // ClassName can contain $, _, numbers, letters (for inner classes like Class$1)
+            const match = result.match(/(.*)\/([\w$]+)\.(.+)$/);
+            if (match) {
+                const [, prefix, className, methodPart] = match;
+                result = `${escapeHtml(prefix)}/<span class="type">${escapeHtml(className)}</span>.<span class="method">${escapeHtml(methodPart)}</span>`;
+            } else {
+                // Fallback: just escape HTML
+                result = escapeHtml(result);
+            }
+            
+            return result;
+        }
+
+        function toggleFullTrace(traceId) {
+            const fullTrace = document.getElementById(traceId);
+            const overlay = document.getElementById(`overlay_${traceId}`);
+            const expandIndicator = fullTrace.previousElementSibling.querySelector('.expand-indicator');
+            
+            if (fullTrace.style.display === 'none' || fullTrace.style.display === '') {
+                fullTrace.style.display = 'block';
+                overlay.style.display = 'block';
+                expandIndicator.textContent = '▲';
+                // Prevent body scroll when modal is open
+                document.body.style.overflow = 'hidden';
+            } else {
+                closeFullTrace(traceId);
+            }
+        }
+
+        function closeFullTrace(traceId) {
+            const fullTrace = document.getElementById(traceId);
+            const overlay = document.getElementById(`overlay_${traceId}`);
+            const expandIndicator = fullTrace.previousElementSibling.querySelector('.expand-indicator');
+            
+            fullTrace.style.display = 'none';
+            overlay.style.display = 'none';
+            expandIndicator.textContent = '▼';
+            // Restore body scroll
+            document.body.style.overflow = 'auto';
+        }
+        
+        function collapseUploadSection() {
+            const uploadSection = document.getElementById('upload-section');
+            const uploadToggle = document.getElementById('upload-toggle');
+            
+            uploadSection.classList.add('collapsed');
+            uploadToggle.textContent = '▼ Show Upload Panel';
+        }
+        
+        function toggleUploadSection() {
+            const uploadSection = document.getElementById('upload-section');
+            const uploadToggle = document.getElementById('upload-toggle');
+            
+            if (uploadSection.classList.contains('collapsed')) {
+                uploadSection.classList.remove('collapsed');
+                uploadToggle.textContent = '▲ Hide Upload Panel';
+            } else {
+                uploadSection.classList.add('collapsed');
+                uploadToggle.textContent = '▼ Show Upload Panel';
+            }
+        }
+        
+        function escapeHtml(text) {
+            const map = {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#039;'
+            };
+            return text.replace(/[&<>\"']/g, function(m) { return map[m]; });
+        }
+    </script>
+</body>
+</html>
+
