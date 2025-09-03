@@ -2,7 +2,7 @@
 
 A Flask-based backend server for comparing flame graphs and analyzing performance differences between two profiling sessions. This tool processes collapsed flame graph files and provides detailed diff analytics via REST API.
 
-![Flame UI](https://github.fkinternal.com/Flipkart/poke/blob/master/flame/img/flame.jpg)
+![Flame UI](https://github.com/Pratyay/flame-diff/blob/main/img/flame.jpg)
 
 ## Features
 
@@ -101,7 +101,7 @@ Example:
 
 ## Interpreting Results
 
-![Compare UI](https://github.fkinternal.com/Flipkart/poke/blob/master/flame/img/compare.jpg)
+![Compare UI](https://github.com/Pratyay/flame-diff/blob/main/img/compare.jpg)
 
 - **Green (Added)**: New stack traces that appear only in the new profile
 - **Red (Removed)**: Stack traces that existed in the old profile but not the new one
@@ -111,7 +111,7 @@ Example:
 The percentage changes help identify the most significant performance differences between the two profiling sessions.
 
 #### Click to expand individual stacktrace
-![Stack UI](https://github.fkinternal.com/Flipkart/poke/blob/master/flame/img/stack.jpg)
+![Stack UI](https://github.com/Pratyay/flame-diff/blob/main/img/stack.jpg)
 
 ## Sample Files
 
