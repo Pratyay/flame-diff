@@ -31,12 +31,12 @@ The server consists of two main components:
 ### Option 1: Using Virtual Environment (Recommended)
 1. Clone the repository
    ```bash
-   git clone https://github.fkinternal.com/Flipkart/poke
+   git clone https://github.com/Pratyay/flame-diff
    ```
 
 2. Switch to flame directory
    ```bash
-   cd poke/flame
+   cd flame-diff
    ``` 
 
 3. Create and activate virtual environment:
