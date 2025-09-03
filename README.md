@@ -113,11 +113,6 @@ The percentage changes help identify the most significant performance difference
 #### Click to expand individual stacktrace
 ![Stack UI](https://github.com/Pratyay/flame-diff/blob/main/img/stack.jpg)
 
-## Sample Files
-
-Use the included sample files to test the tool:
-- `old.collapsed` - Sample old flame graph
-- `new.collapsed` - Sample new flame graph
 
 ## Tips
 
